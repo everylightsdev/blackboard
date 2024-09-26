@@ -6,7 +6,7 @@ import './App.css';
 
 import DataGrid from 'react-data-grid';
 
-const WORLD_SIZE = 1000;
+const WORLD_SIZE = 200;
 
 function getRandomColor() {
   var letters = '0123456789ABCDEF';
@@ -33,10 +33,15 @@ function App() {
   const [rows, setRows] = useState([]);
   const [linkMap, setLinkMap] = useState(localMapRaw ? JSON.parse(localMapRaw) : {});
   const [size, setSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+  const [pos, setPos] = useState({x:WORLD_SIZE/2, y:WORLD_SIZE/2});
+  const [mapRect, setMapRect] = useState({x:0, y:0, width: (window.innerWidth/50)/WORLD_SIZE * 200, height: (window.innerHeight/50)/WORLD_SIZE * 200});
   const gridRef = useRef(null);
-  let ready = false;
+  const [scrollX, setScrollX] = useState(0);
+  const [scrollY, setScrollY] = useState(0);
 
   useEffect(() => {
+    // window.addEventListener('scroll', handleScroll);
+    // return () => window.removeEventListener('scroll', handleScroll);
     //const localMapRaw = localStorage.getItem('linkMap');
     //if (localMapRaw) setLinkMap(JSON.parse(localMapRaw));
 
@@ -44,10 +49,7 @@ function App() {
   }, []);
 
   useImperativeHandle(gridRef, () => {
-    if (!ready) {
-      gridRef.current.scrollToCell({idx: columns.length/2, rowIdx: rows.length/2});
-      ready = true;
-    }
+    gridRef.current.scrollToCell({idx: pos.x, rowIdx: pos.y});
   }, []);
 
   function refreshRows() {
@@ -75,23 +77,28 @@ function App() {
     console.log(cell);
     linkMap[cell.row[cell.column.key]] = `https://placehold.co/40x40/${getRandomColor()}/png`;
     localStorage.setItem('linkMap', JSON.stringify(linkMap));
-    console.log(linkMap);
   }
 
-  async function handleScroll(e) {
-    // if (isLoading || !isAtBottom(e)) return;
+  let timer = null;
+  function handleScroll(e) {
+    const grid = e.target;
+    const boundRect = grid.getBoundingClientRect();
 
-    // setIsLoading(true);
-
-    // // await loadMoreRowsAsync();
-
-    // setIsLoading(false);
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(() => {
+    setMapRect({
+      width: mapRect.width,
+      height: mapRect.height,
+      x: ((grid.scrollLeft)/(grid.scrollWidth-boundRect.width)) * 200 + 1,
+      y: ((grid.scrollTop)/(grid.scrollHeight-boundRect.height)) * 200 + 1
+    });
+    }, 100);
   }
 
   for (let x=0; x<WORLD_SIZE; x++) {
     columns.push({key: `x${x}`, name: `X${x}`,
       renderCell({ row }) {
-        return <div style={{color: '#333', lineHeight: '47px', margin:'auto', width: '50px', height: '50px', backgroundColor: '#000'}}>
+        return <div style={{color: '#333', lineHeight: '50px', margin:'auto', width: '50px', height: '50px', backgroundColor: '#000'}}>
           { !linkMap[row[`x${x}`]] ? row[`x${x}`] :
             <img src={linkMap[row[`x${x}`]]} style={{margin: 'auto', padding:0, borderRadius: '5px', verticalAlign: 'middle'}} />
           }
@@ -113,11 +120,56 @@ function App() {
 
   return (
     <div className="App" style={{height: size.height}}>
-      <DataGrid ref={gridRef} columns={columns} rows={rows} rowHeight={50} class="fill-grid" style={{ height: '100%' }}
+      <DataGrid ref={gridRef} columns={columns} rows={rows} rowHeight={50} class="fill-grid" style={{ height: size.height }}
         onScroll={handleScroll}
         onSelectedCellChange={onSelect} />
+      <div style={{position:'absolute', left: 0, bottom: 0, padding:0, margin: 0, width: '200px', height: '200px', backgroundColor: '#fff', cursor: 'zoom-in', opacity: .7}} >
+        <SvgMap linkMap={linkMap} gridRef={gridRef} mapRect={mapRect}></SvgMap>
+      </div>
     </div>
   );
+}
+
+function SvgMap({linkMap: linkMap, gridRef: gridRef, mapRect: mapRect}) {
+  const [fills, setFills] = useState([]);
+  const [isScrolling, setScrolling] = useState(false);
+  const [pos, setPos] = useState({x:0, y:0});
+
+  // useEffect((gridRef) => {
+  //   // console.log(gridRef.currentTarget);
+  //   // const x = gridRef.current.target.scrollLeft;
+  //   // const y = gridRef.current.target.scrollTop;
+  //   // setPos({x: x, y: y});
+  // }, [gridRef]);
+
+  // useImperativeHandle(gridRef, () => {
+  //   //gridRef.current.scrollToCell({idx: pos.x, rowIdx: pos.y});
+  //   //console.log(gridRef.current.scrollLeft);
+  // }, []);
+
+  for (const [key, value] of Object.entries(linkMap)) {
+    const splits = key.split('Y');
+    const x = splits[0].substring(1);
+    const y = splits[1];
+    
+    fills.push({x: x, y: y});
+  }
+
+  return (
+    <svg height="200" width="200"
+      onClick={((e) => {
+        const boundRect = e.target.getBoundingClientRect();
+        const pos = {x: Math.floor(e.clientX/200 * WORLD_SIZE), y: Math.floor((e.clientY - boundRect.y)/200 * WORLD_SIZE)};
+        gridRef.current.scrollToCell({idx: pos.x, rowIdx: pos.y});
+      })}
+    >
+      {fills.map((pos, index) => {
+        return <circle key={index} r="1" cx={pos.x/WORLD_SIZE * 200 + 1} cy={pos.y/WORLD_SIZE * 200 + 1} fill="red" />
+      })}
+      <rect width={mapRect.width} height={mapRect.height} x={mapRect.x} y={mapRect.y}
+        style={{strokeWidth:.5, stroke:'#000', fillOpacity:0}} />
+    </svg>
+  )
 }
 
 export default App;
