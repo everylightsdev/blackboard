@@ -6,7 +6,7 @@ import './App.css';
 
 import DataGrid from 'react-data-grid';
 
-const WORLD_SIZE = 200;
+const WORLD_SIZE = 1000;
 
 function getRandomColor() {
   var letters = '0123456789ABCDEF';
@@ -133,7 +133,6 @@ function App() {
 function SvgMap({linkMap: linkMap, gridRef: gridRef, mapRect: mapRect}) {
   const [fills, setFills] = useState([]);
   const [isScrolling, setScrolling] = useState(false);
-  const [pos, setPos] = useState({x:0, y:0});
 
   // useEffect((gridRef) => {
   //   // console.log(gridRef.currentTarget);
@@ -164,7 +163,7 @@ function SvgMap({linkMap: linkMap, gridRef: gridRef, mapRect: mapRect}) {
       })}
     >
       {fills.map((pos, index) => {
-        return <circle key={index} r="1" cx={pos.x/WORLD_SIZE * 200 + 1} cy={pos.y/WORLD_SIZE * 200 + 1} fill="red" />
+        return <circle key={index} r="1" cx={pos.x/WORLD_SIZE * 200 + (mapRect.width/2)} cy={pos.y/WORLD_SIZE * 200 + (mapRect.height/2)} fill="red" />
       })}
       <rect width={mapRect.width} height={mapRect.height} x={mapRect.x} y={mapRect.y}
         style={{strokeWidth:.5, stroke:'#000', fillOpacity:0}} />
